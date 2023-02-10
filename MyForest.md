@@ -2,7 +2,7 @@
 
 ## 安装MySQL数据库
 
-终端中登录数据库
+终端中登录数据库 (password: 123456)
 
 ```powershell
 mysql -h localhost -u root -p
