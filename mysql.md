@@ -170,6 +170,63 @@ where 在分组前过滤，having 在分组后过滤， where 中不可使用聚
 
 SELECT address FROM employee WHERE age > 30 GROUP BY address HAVING COUNT(*) > 3; // 查询工作地点中30岁以上员工超过3名的工作地点
 
+### DCL
+
+DCL语言管理数据库用户权限
+
+查询用户：USE mysql;
+
+创建用户：CREATE USER 'username'@'locallhost' IDENTIFIED BY '123456'; localhost表示只能本机访问，%表示任意主机都可访问
+
+修改密码：ALTER USER 'username'@'hostname' IDENTIFIED WITH mysql_native_password BY '123';
+
+删除用户：DROP USER 'username'@'hostname';
+
+### 函数
+
+#### 字符串函数
+
+| 函数                       | 功能               |
+| -------------------------- | ------------------ |
+| CONCAT                     | 拼接               |
+| LOWER, UPPER               | 大小写转换         |
+| LPAD, RPAD(str, n, pad)    | padding            |
+| TRIM                       | 删除前缀和后缀空格 |
+| SUBSTRING(str, start, len) | 子串               |
+
+#### 数值函数
+
+| 函数  | 功能       |
+| ----- | ---------- |
+| CEIL  | 向上取整   |
+| FLOOR | 向下取整   |
+| MOD   |            |
+| RAND  | (0, 1)随机 |
+| ROUND |            |
+
+#### 日期函数
+
+| 函数     | 功能                                                |
+| -------- | --------------------------------------------------- |
+| CURDATE  | 当前日期 YYYY-MM-DD                                 |
+| CURTIME  | 当前时间 HH-MM-SS                                   |
+| NOW      | 当前时间 YYYY-MM-DD HH-MM-SS                        |
+| YEAR     | 取时间中的年                                        |
+| MONTH    | 取时间中的月                                        |
+| DAY      | 取时间中的日                                        |
+| DATE_ADD | 日期加法 SELECT DATE_ADD(NOW(), INTERVAL 70 MONTH); |
+| DATEDIFF | 日期减法                                            |
+
+#### 控制函数
+
+IF(VALUE, T, F)：VALUE 为 TRUE 返回 T, 否则返回 F
+
+IFNULL(VALUE1, VALUE2): VALUE1 不为 NULL 则返回 VALUE1，否则 VALUE2
+
+CASE value WHEN case1 THEN result1 WHEN case2 THEN result2 ELSE default;
+
+CASE WHEN express1 THEN result1 WHEN express2 THEN result2 ELSE defualt;
+
 #### 分页查询
 
 SELECT field_name FROM table_name LIMIT offset, limit_num;
