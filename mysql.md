@@ -72,14 +72,15 @@ score double(4, 1) (整体长度，小数位数)
 CHAR 相对于 VARCHAR 性能更高，VARCHAR 会根据字符长度确定存储空间
 
 ```sql
-CREATE TABLE emp (
+CREATE TABLE emp 
+(
     id INT COMMENT '编号',
     workno VARCHAR(10) COMMENT '工号',
     name VARCHAR(10) COMMENT '姓名',
     gender CHAR(1) COMMENT '性别',
     age TINYINT UNSIGNED COMMENT '年龄',
     idcard CHAR(18) COMMENT '身份证号',
-    entrydate DATE COMMENT '入职时间',
+    entrydate DATE COMMENT '入职时间'
 ) COMMENT '员工表';
 
 ```
@@ -104,9 +105,11 @@ CREATE TABLE emp (
 
 #### 插入语句
 
+```sql
 INSERT INTO table_name (field1, field2, ...) VALUES (value1, value2, ...);
-
 INSERT INTO table_name VALUES (value1, value2, ...), (value1, value2, ...);
+```
+
 
 #### 更新语句
 
@@ -160,11 +163,15 @@ ORDER BY field1 ... [ASC|DESC], field2 ... ]ASC|DESC];
 
 #### GROUPY BY 子句
 
+```sql
 SELECT column_name, function(column_name) FROM table_name WHERE column_name operator value GROUP BY column_name HAVING ...;
+```
 
 可以对分组使用COUNT, MAX, MIN, SUM, AVG等函数, NULL 不参与计算
 
+```sql
 SELECT AVG(score) FROM student;
+```
 
 where 在分组前过滤，having 在分组后过滤， where 中不可使用聚合函数
 
@@ -223,11 +230,65 @@ IF(VALUE, T, F)：VALUE 为 TRUE 返回 T, 否则返回 F
 
 IFNULL(VALUE1, VALUE2): VALUE1 不为 NULL 则返回 VALUE1，否则 VALUE2
 
+```sql
 CASE value WHEN case1 THEN result1 WHEN case2 THEN result2 ELSE default;
+CASE WHEN express1 THEN result1 WHEN express2 THEN result2 ELSE default;
+```
 
-CASE WHEN express1 THEN result1 WHEN express2 THEN result2 ELSE defualt;
 
-#### 分页查询
+## 约束
+
+约束用于规定字段，限制表中的数据
+
+| 约束     | 关键字      | 备注                                     |
+| -------- | ----------- | ---------------------------------------- |
+| 非空     | NOT NULL    |                                          |
+| 唯一     | UNIQUE      |                                          |
+| 主键     | PRIMARY KEY | 非空且唯一                               |
+| 默认     | DEFAULT     |                                          |
+| 检查约束 | CHECK       | 保证字段满足某一条件                     |
+| 外键     | FOREIGN KEY | 建立两张表的连接，保证数据一致性和完整性 |
+
+### 案例
+
+| 字段   | 约束         | 约束关键字                  |
+| ------ | ------------ | --------------------------- |
+| id     | 主键，自增   | PRIMARY KEY, AUTO_INCREMENT |
+| name   | 不为空，唯一 | NOT NULL, UNIQUE            |
+| age    | 0-120之间    | CHECK                       |
+| status | 默认为1      | DEFAULT                     |
+| gender | 无约束       |                             |
+
+```sql
+CREATE TABLE user
+(
+    id     INT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    name   VARCHAR(10) NOT NULL UNIQUE COMMENT '姓名',
+    age    INT CHECK (age > 0 AND age < 120) COMMENT '年龄',
+    status CHAR(1) DEFAULT '1' COMMENT '状态',
+    gender CHAR(1) COMMENT '性别'
+);
+```
+
+### 外键约束
+
+```sql
+CREATE TABLE table_name
+(
+    ...
+    [CONSTRAINT] [constraint_name] FOREIGN KEY (foreign_key_name) REFRENCES foreign_table_name(key_name)
+);
+
+ALTER TABLE table_name ADD CONSTRAINT constraint_name FOREIGN KEY (foreign_key_name) REFRENCES foreign_table_name(key_name);
+```
+
+删除外键
+
+```sql
+ALTER TABLE table_name DROP FOREIGN KEY foreign_key_name;
+```
+
+## 多表查询
 
 SELECT field_name FROM table_name LIMIT offset, limit_num;
 
