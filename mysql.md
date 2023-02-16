@@ -110,7 +110,6 @@ INSERT INTO table_name (field1, field2, ...) VALUES (value1, value2, ...);
 INSERT INTO table_name VALUES (value1, value2, ...), (value1, value2, ...);
 ```
 
-
 #### 更新语句
 
 UPDATE table_name SET field1=new_value1, field2=new_value2, ... [WHERE ...];
@@ -177,6 +176,14 @@ where 在分组前过滤，having 在分组后过滤， where 中不可使用聚
 
 SELECT address FROM employee WHERE age > 30 GROUP BY address HAVING COUNT(*) > 3; // 查询工作地点中30岁以上员工超过3名的工作地点
 
+#### 从任一起始位置开始查询
+
+SELECT field_name FROM table_name LIMIT offset, limit_num;
+
+#### 执行顺序
+
+FROM -> WHERE -> GROUP BY -> HAVING -> SELECT -> ORDER BY -> LIMIT
+
 ### DCL
 
 DCL语言管理数据库用户权限
@@ -235,7 +242,6 @@ CASE value WHEN case1 THEN result1 WHEN case2 THEN result2 ELSE default;
 CASE WHEN express1 THEN result1 WHEN express2 THEN result2 ELSE default;
 ```
 
-
 ## 约束
 
 约束用于规定字段，限制表中的数据
@@ -290,16 +296,132 @@ ALTER TABLE table_name DROP FOREIGN KEY foreign_key_name;
 
 ## 多表查询
 
-SELECT field_name FROM table_name LIMIT offset, limit_num;
+### 多表关系
 
-#### 执行顺序
+通过中间表建立两张表的关系，如学生表和课程表，要通过选课表来建立关系。
 
-FROM -> WHERE -> GROUP BY -> HAVING -> SELECT -> ORDER BY -> LIMIT
+将同一张表的不同字段拆分成两张表，在任意一张表加入外键，添加唯一约束
 
-#### 3表连接
+### 多表查询
 
-INNER JOIN 内联，等值连接：连接两张表均有的记录
+```sql
+SELECT * FROM employee emp, department dep WHERE emp.depid = dep.id;
+```
+
+#### 连接查询
+
+INNER JOIN 内联，等值连接：连接两张表均有的记录，交集，若需要查询不符合的信息，需要使用外连接
+
+```sql
+-- 隐式内连接
+SELECT column1 FROM table1, table2 WHERE ...;
+
+-- 显式内连接
+SELECT column2 FROM table1 [INNER] JOIN table2 ON ...;
+```
 
 LEFT JOIN 左联：保留左表所有记录
 
 RIGHT JOIN 右联：保留右表所有记录
+
+```sql
+-- left
+SELECT column1 FROM table1 LEFT [OUTER] JOIN table2 ON ...;
+
+-- right
+SELECT column2 FROM table1 RIGHT [OUTER] JOIN table2 ON ...;
+```
+
+自连接 必须起别名
+
+```sql
+-- 内联
+SELECT table1.column_name, table2.column_name FROM table table1, table table2 WHERE table1.column1 = table2.column2;
+
+-- 外联
+SELECT table1.column_name, table2.column_name FROM table table1 LEFT JOIN table table2 ON table1.column1 = table2.column2;
+```
+
+#### 联合查询 UNION
+
+```sql
+-- ALL 会有重复项
+-- 两个查询结果列数一致，数据类型也一致
+SELECT * FROM table1 WHERE condition1
+UNION [ALL]
+SELECT * FROM table2 WHERE condition2;
+
+```
+
+#### 子查询
+
+```sql
+-- 标量子查询，子查询返回单个值
+SELECT * FROM table1 WHERE column1 > (SELECT column1 FROM table2);
+
+-- 列子查询，子查询返回列，常用 IN, NOT IN, ANY, SOME, ALL
+SELECT * FROM table1 WHERE column1 IN （SELECT column2 FROM table 2);
+
+-- 行子查询，子查询返回行
+SELECT * FROM table1 WHERE (column1, column2) = (SELECT column_name1, column_name2 FROM table2);
+
+-- 表子查询，子查询返回多行多列
+SELECT * FROM table1 WHERE (column1, column2) IN (SELECT column_name1, column_name2 FROM table2);
+SELECT * FROM (SELECT column_name1, column_name2 FROM table2) LEFT JOIN table1 ON table2.id = table1.id;
+```
+
+## 事务
+
+一组操作的组合，具有原子性，失败后回滚，MySQL中事务自动提交，
+
+```sql
+-- 设置事务提交方式
+SELECT @@autocommit;
+SET @@autocommit=0;
+
+-- 转账事务
+SELECT * FROM account WHERE name = 'user1';
+UPDATE account SET money = money - 1000 WHERE name = 'user1';
+UPDATE account SET money = money + 1000 WHERE name = 'user2';
+
+-- 成功则提交
+COMMIT;
+-- 失败则回归
+ROLLBACK;
+
+------------------------------------------------
+-- 定义事务
+START TRANSACTION;
+-- 或
+BEGIN;
+```
+
+### 事务的特性
+
+ACID：原子性、一致性（事务完成时所有数据状态一致）、隔离性、持久性
+
+Atomicity, Consistency, Isolation, Durability
+
+### 并发事务
+
+脏读：一个事务读取另一个事务未提交的数据
+
+不可重复读：一个事务先后读取同一条数据，两次结果不同
+
+幻读：一个事务查询数据时不存在，但在插入时发现该数据已存在
+
+#### 事务的隔离级别
+
+| 隔离级别                 | 脏读     | 不可重复读 | 幻读     |
+| ------------------------ | -------- | ---------- | -------- |
+| Read uncommitted         | 不可避免 | 不可避免   | 不可避免 |
+| Read committed           | 可避免   | 不可避免   | 不可避免 |
+| Repeatable Read(default) | 可避免   | 可避免     | 不可避免 |
+| Serializable             | 可避免   | 可避免     | 可避免   |
+
+```sql
+-- 查看事务隔离级别
+SELECT @@TRANSACTION_ISOLATION;
+
+SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+```

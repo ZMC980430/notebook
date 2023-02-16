@@ -105,3 +105,47 @@ Class Person {
 	private int age;     \\ 10
 }
 ```
+
+### profile
+
+#### profile 配置
+
+多文件形式：
+
+配置多个application-dev.properties, application-test.properties，在主 application.properties 中配置 spring.profiles.active=dev
+
+单文件形式：application.yml
+
+```yaml
+---
+server:
+  port: 8080
+spring:
+  profiles: dev
+---
+server:
+  port: 8081
+spring:
+  profiles: test
+---
+spring:
+  profiles:
+    active: dev
+```
+
+#### profile 激活
+
+VM 配置：-Dspring.profiles.active=test
+
+命令行配置：--spring.profiles.active=test
+
+### 配置加载
+
+SpringBoot 程序配置加载顺序：
+
+- file: ./config/ 项目路径下config
+- file: ./ 项目根目录
+- classpath:/config
+- classpath:/
+
+优先级依次递减
