@@ -90,3 +90,72 @@ DML操作遵循ACID模型，支持事务；行级锁，提高并发性能；支�
 在MySQL中，Memory引擎支持哈希索引，但在InnoDB中支持自动哈希
 
 ## 索引分类
+
+| 分类 | 含义             | 特点           | 关键字   |
+| ---- | ---------------- | -------------- | -------- |
+| 主键 | 主键索引         | 默认创建，唯一 | PRIMARY  |
+| 唯一 | 避免列值重复     | 可以多个       | UNIQUE   |
+| 常规 | 快速定位特定数据 | 可以多个       |          |
+| 全文 | 查找文本关键字   | 可以多个       | FULLTEXT |
+
+在InnoDB中
+
+| 分类                        | 含义                                               | 特点         |
+| --------------------------- | -------------------------------------------------- | ------------ |
+| 聚集索引（Clustered Index） | 数据和索引存放在一起，索引结构的叶子节点保存行数据 | 必须有且唯一 |
+| 二级索引（Secondary Index） | 数据与索引分开存放，索引结构的叶子节点关联数据     | 可以多个     |
+
+如果存在主键，主键是聚集索引，不存在主键则使用第一个UNIQUE索引作为聚集索引
+
+如果不存在合适的索引，InnoDB会自动生成rowid作为隐含的聚集索引
+
+二级索引查找出主键值，再根据主键值在聚集索引中查找对应行数据
+
+## 索引语法
+
+```sql
+-- 创建索引
+CREATE [UNIQUE|FULLTEXT] INDEX index_name ON table_name (index_col_name);
+
+-- 查看索引
+SHOW INDEX FROM table_name;
+
+-- 删除索引
+DROP INDEX index_name ON table_name;
+```
+
+## SQL 性能分析
+
+```sql
+-- 查询SQL执行频率
+SHOW GLOBAL STATUS LIKE 'Com_____';
+```
+
+### 慢查询日志
+
+记录耗时超过指定值的查询语句
+
+```sql
+-- 查询是否开启慢查询
+SHOW VARIABLES LIKE 'slow_query_log';
+```
+
+在 my.cnf 中配置 slow_query_log 和 long_query_time
+
+慢日志文件 {host}-slow.log
+
+### profile 详情
+
+记录详细的执行用时
+
+```sql
+-- 开启profiles
+SELECT @@PROFILING;
+SET PROFILING=1;
+
+-- 查看所有命令执行用时
+SHOW PROFILES;
+
+-- 查看具体命令的执行用时、cpu占用
+SHOW PROFILE [CPU] FOR {QUERY id};
+```
