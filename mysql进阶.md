@@ -159,3 +159,167 @@ SHOW PROFILES;
 -- 查看具体命令的执行用时、cpu占用
 SHOW PROFILE [CPU] FOR {QUERY id};
 ```
+
+### explain 执行计划
+
+```sql
+DESC|EXPLAIN SELECT ... FROM ...;
+```
+
+Explain 中个字段的意义
+
+* id：同id由上到下执行，不同id较大先执行
+* select_type：SIMPLE, PRIMARY, UNION, SUBQUERY
+* type：访问类型，由好到差分别为NULL, system, const（根据唯一索引查询）, eq_ref, ref（非唯一索引）, range, index（遍历索引树）, all（全表扫描）
+* possible_keys：可能用到的索引
+* keys：用到的索引
+* key_len：使用的索引字节长度
+* rows：MySQL认为必须要执行查询的行数，是估计值
+* filtered：返回值占全部值的多少
+
+### 索引的使用
+
+**最左前缀法则：联合索引要保证最左侧的列存在，并且中间的列存在，不能跳过，才会使用索引查询，否则全表查询**
+
+范围查询（>, <)：联合索引中出现范围查询，则右侧的列索引失效，可使用>=, <=来规避
+
+#### 索引失效
+
+* 在索引列上进行计算会导致索引失效
+* 字符串类型不加单引号会索引失效（会发生隐式转换，使得索引失效）
+* 尾部模糊匹配不会失效，头部模糊匹配会失效
+* or 连接的连接的条件，若or前的条件有索引，但之后的条件没有索引，前面的索引也会失效
+* 若MySQL判断全表扫描比索引更快，会放弃使用索引，如返回结果超过表的半数，全表扫描更快，取决于数据分布情况
+
+#### 索引提示
+
+可以指定查找时使用哪个索引
+
+```sql
+-- 建议使用
+SELECT ... FROM ... USE INDEX(...) WHERE ...;
+-- 忽略索引
+SELECT ... FROM ... IGNORE INDEX(...) WHERE ...;
+-- 强制使用
+SELECT ... FROM ... FORCE INDEX(...) WHERE ...;
+```
+
+#### 覆盖索引
+
+覆盖索引指索引中已包含需要搜索的结果，无需回表查询
+
+要减少 SELECT * 的使用，如果查询的字段在索引列中能找到，那么查询效率会高，否则需要回表查询剩余字段
+
+指定要查询的列，可以减少查询时间
+
+#### 前缀索引
+
+```sql
+CREATE INDEX idx_xxx table_name(column_name(length));
+```
+
+前缀长度的选择：选择性指不重复索引值占表记录总数的比值，要选择选择性尽可能大的前缀长度
+
+```sql
+-- 计算前缀长为N的选择性
+SELECT COUNT(DISTINCT SUBSTRING(column_name, 1, N)) / COUNT(*) FROM table_name;
+```
+
+#### 单列索引和联合索引
+
+ 为了避免回表查询，可以对常用的查询字段建立联合索引，并使用索引提示来避免回表查询
+
+#### 索引设计原则
+
+1. 针对数据量大,查询频繁的表建立索引
+2. 对于常用于 where, order by, group by的字段建立索引, 利用联合索引
+3. 选择区分度高的字段建立索引, 多建立唯一索引
+4. 尽量使用联合索引, 减少单列索引
+5. 对于较长的字符串建立前缀索引
+6. 控制索引的数量, 减少维护索引的开销
+7. 若索引列不能存储NULL, 在创建时用 NOT NULL约束, 优化器知道是否包含NULL值后可以更好地确定应该使用的索引
+
+### SQL 语句优化
+
+#### 插入优化
+
+1. 批量插入
+2. 手动事务提交
+3. 主键顺序插入，顺序性能高于乱序
+4. 使用LOAD指令，从磁盘中加载数据
+
+```powershell
+# 登录时添加 --local-infile 指令
+mysql --local-infile -u root -p
+```
+
+```sql
+SET GLOBAL LOCAL_INFILE=1;
+LOAD DATA LOCAL INFILE '/...' INTO TABLE table_name FIELDS TERMINATED BY ',' LINES TERMINATED BY '\N';
+```
+
+#### 主键优化
+
+InnoDB中，表数据根据主键顺序存放，这种表称为索引组织表（index organized table IOT）
+
+##### 页分裂
+
+页可以为空，也可填充一半或者填满。每个页包含多行数据，并根据主键排列。当要插入的行对应的页已满，会先将该页分裂，前一半数据不动，后一半数据复制到新页中，并更新链表指针，然后插入新数据。
+
+##### 页合并
+
+当一个页中数据少于阈值时，InnoDB会查找最靠近的页合并数据以优化空间。合并阈值默认为一半。
+
+##### 主键设计原则
+
+1. 降低主键长度
+2. 插入时选择顺序，使用AUTO_INCREMENT自增主键
+3. 不要使用UUID或其他自然主键，如身份证号
+4. 业务操作时避免对主键的修改
+
+#### ORDER BY 优化
+
+using filesort：通过表索引或全表扫描，读取数据后，在缓冲区中完成排序
+
+using index：通过对索引扫描直接获取排序数据，效率更高
+
+#### GROUP BY 优化
+
+要满足最左前缀法则，避免使用临时表
+
+```sql
+-- 需要column1，column2的联合索引
+SELECT COUNT(*) FROM table_name WHERE column1 = ... GROUP BY column2;
+```
+
+#### LIMIT 优化
+
+大数据量情况时，LIMIT耗时会非常长，可以通过覆盖索引和子查询来节省时间
+
+```sql
+-- 耗时
+SELECT * FROM user LIMIT 10000, 10;
+-- 节省时间
+SELECT u.* FROM user, (SELECT id FROM user ORDER BY id LIMIT 10000, 10) a WHERE s.id=a.id;
+
+```
+
+#### COUNT 优化
+
+MyISAM 引擎记录了表的总行数，但InnoDB没有，在执行COUNT时需要读取数据，无法直接优化
+
+COUNT(*) 计数记录数
+
+COUNT(column) 计数字段中非空值
+
+COUNT(1) 计数记录数
+
+COUNT 计数的字段没有NOT NULL约束时会判断是否为空，会影响速度，若有NOT NULL约束，只会取值不会判断
+
+COUNT(*) 不会取值，引擎有优化，直接返回总计数，效率最高
+
+### update优化
+
+InnoDB 默认行锁，但若查询字段没有索引，更新操作会加表锁
+
+行锁是针对索引加的锁
