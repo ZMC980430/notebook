@@ -18,3 +18,13 @@
 # 反射
 
 一个类在内存中只有一个Class对象，
+
+# 并发编程
+
+实现Runnable接口的类，重载run方法，无返回值，通过Executors下的工厂方法获得ExecutorService对象，调用execute方法，将实现了Runnable接口的对象传入，调用shutdown方法可以终止获取新的对象，但会等待已执行的线程结束，shutdownNow() 不会等待
+
+实现Callable\<T>接口，重载call方法，可以返回T类型，调用invoke方法可以执行并返回Future对象，但通过Future对象的get方法调用返回值时，若线程未执行完会阻塞
+
+lambda表达式同样适用于以上两种方法，直接传入一个无参lambda表达式
+
+也可以使用Stream来实现并行，主要通过parallel()方法，再加上mapToObj或forEach等方法

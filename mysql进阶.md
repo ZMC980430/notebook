@@ -344,3 +344,186 @@ local 只会检查视图创建时的检查选项，cascaded 会检查所涉及�
 * 视图可以简化用户对数据的理解，简化操作。将常用的查询定义为视图，可以减少后续的操作
 * 数据库无法对特定的列和行进行授权，但通过视图可以修改不同用户可查询和可修改的数据
 * 视图可以帮助用户屏蔽真是表结构变化带来的影响
+
+# 存储过程
+
+存储过程是数据库SQL语言层面的代码封装与重用
+
+```sql
+-- 创建
+CREATE PROCEDURE p1()
+BEGIN
+    SELECT COUNT(*) FROM table_name;
+END;
+
+-- 调用
+CALL p1();
+
+-- 查看指定数据库的存储过程及状态信息，查询指定的存储过程的定义
+SELECT * FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_SCHEMA = 'XXX';
+SHOW CREATE PROCEDURE procedure_name;
+
+-- 删除
+DROP PROCEDURE [IF EXISTS] XXX;
+```
+
+在命令行中创建存储过程时要用 delimiter 来指定结束符，防止出现；即结束。
+
+```sql
+DELIMITER $$
+CREATE PROCEDURE p1()
+BEGIN
+    ... ;
+END $$
+```
+
+## 变量
+
+### 系统变量
+
+系统变量由系统提供，不会被用户定义，分为全局变量和会话变量
+
+```sql
+-- 查看系统变量 默认session级别
+SHOW VARIABLES;
+SHOW GLOBAL VARIABLES;
+
+-- 查询变量
+SHOW SESSION VARIABLES LIKE 'auto%';
+
+-- 查看指定变量
+SELECT @@SESSION.AUTOCOMMIT;
+
+-- 设置系统变量
+SET SESSION AUTOCOMMIT=0;
+SET @@SESSION.AUTOCOMMIT=0;
+```
+
+系统变量的修改会在服务器重启后失效，永久修改需要在配置文件中进行
+
+### 用户变量
+
+用户变量只存在于单个会话中
+
+```sql
+SET @var_name = ...;
+SET @var_name := ...;
+SELECT @var_name := ...;
+SELECT column_name INTO @var_name FROM table_name;
+```
+
+### 局部变量
+
+局部变量只能在 begin - end 块中
+
+```sql
+BEGIN
+    -- 声明
+    DECLARE var_name var_type [DEFAULT];
+
+    -- 赋值
+    SET var_name := ...;
+    SELECT column_name INTO var_name FROM table_name;
+END;
+```
+
+### IF 语句
+
+```sql
+IF condition1 THEN 
+    ...;
+ELSEIF condition2 THEN
+    ...;
+ELSE
+    ...;
+END IF;
+```
+
+### 存储类型的参数 IN, OUT, INOUT
+
+| 类型  | 含义                         |
+| ----- | ---------------------------- |
+| IN    | 参数作为输入，需要传值       |
+| OUT   | 参数作为输出                 |
+| INOUT | 参数既可作为输入也可作为输出 |
+
+```sql
+CREATE PROCEDURE p1(IN name VARCHAR(10), OUT score INT)
+BEGIN
+    SELECT score INTO score FROM stu WHERE name = name;
+END;
+
+CALL p1('Bob', @score);
+```
+
+### case 语句
+
+```sql
+CASE case_value
+    WHEN when_value1 THEN statement_list1
+    WHEN when_value2 THEN statement_list2
+    [ELSE ...]
+END CASE;
+```
+
+### while 语句
+
+```sql
+WHILE ... DO
+   ...
+END WHILE;
+```
+
+### repeat 语句
+
+```sql
+REPEAT
+    ...
+    UNTIL ...
+END REPEAT;
+```
+
+### loop 语句
+
+```sql
+[label:] LOOP
+    ...
+    -- 结束当前loop
+    [LEAVE label;]
+    -- 跳转至下一循环
+    [ITERATE label;]
+END LOOP [label]
+```
+
+### 游标 cursor
+
+```sql
+-- 声明
+DECLARE cursor_name CURSOR FOR select_statement;
+
+-- 打开
+OPEN cursor_name;
+
+-- 获取记录
+FETCH cursor_name INTO var;
+
+-- 关闭
+CLOSE cursor_name;
+
+```
+
+# 锁
+
+全局锁：对整个数据库实例加锁，变成只读，常用于数据库的全库逻辑备份
+
+```sql
+FLUSH TABLES WITH READ LOCK;
+```
+
+```powershell
+mysqldump -uroot -p1234 table_name>table_name.sql
+```
+
+```sql
+UNLOCK TABLES;
+```
