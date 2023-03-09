@@ -581,3 +581,192 @@ SELECT ... FOR UPDATE：排他锁
 
 * 在唯一索引上查询，并对不存在的数据进行插入或更新时，会使用间隙锁。阻塞其他事务的插入。
 * 在普通索引上进行等值查询时，向右遍历到最后一个值不满足查询条件时，临键锁会退化为间隙锁。即不锁住下一个不满足条件的数据，而是锁住满足条件的数据后的间隙，防止其他事务插入，出现幻读
+
+# InnoDB引擎
+
+![img](https://imgs.itxueyuan.com/1161857-20200414080803070-254183977.png "逻辑存储结构")
+
+表空间->段->区->页->行
+
+## 存储结构
+
+* 表空间：idb文件。一个mysql实例可以对应多个表空间，用于存储记录、索引等数据
+* 段：分为数据段、索引段、回滚段，数据段是B+树的叶子节点，索引段是非叶子节点
+* 区：表空间中的单元结构，大小为1M，默认情况页大小16K，即一个区中有连续64个页
+* 页：磁盘管理的最小单元。为保证页的连续性，InnoDB在申请磁盘空间时会一次申请4-5个区
+* 行：数据按行存放，trx_id：隐藏列，最后一次修改内容的事务id，roll_pointer：回滚指针
+
+## 架构
+
+![1678236972500](image/mysql进阶/1678236972500.png)
+
+### 内存结构
+
+#### Buffer Pool
+
+缓冲池是内存中的区域，存放检查操作的真实数据，在执行增删改查时先操作缓冲池的数据，如果没有则从磁盘加载并缓存，再以一定频率更新磁盘，减少IO
+
+缓冲池以页为单位，底层采用链表结构，页状态分为三类：
+
+* free page：空闲页
+* clean page：有数据但未被修改
+* dirty page：脏页，数据被修改过，与磁盘不一致
+
+#### Change Buffer
+
+如果增删改操作的数据（针对于非唯一二级索引页）不在Buff Pool中，则将数据变更保存在Change Buffer中，在未来数据被读取时将数据合并到Buffer Pool中，再刷新到磁盘中，减少磁盘IO
+
+与聚集索引不同，二级索引通常是非唯一的，删除更新等操作可能影响不相邻的二级索引页，会造成大量IO
+
+#### 自适应哈希 Adaptive Hash Index
+
+用于优化Buffer Pool中数据的查询，InnoDB会检测对个索引页的查询，如果哈希对查询效率有提升，则会自动添加哈希索引
+
+#### Log Buffer
+
+将日志保存在日志缓冲区，默认为16M，以一定频率写入磁盘。
+
+### 磁盘结构
+
+#### System Tablespace
+
+系统表空间是更改缓冲区的存储区域，如果有表在系统表空间中，系统表空间也会存放索引结构和表结构
+
+#### File-Per-Table Tablespaces
+
+如果独立表空间选项开启，所有表的表空间文件都会存放在File-Per-Table 表空间中
+
+#### General Tablespaces
+
+需要手动指定创建，在创建表的时候可以指定将表存放在通用表空间。
+
+```sql
+CREATE TABLESPACE somespace ADD DATAFILE 'xxx.idb' ENGINE=InnoDB;
+CREATE TABLE ... TABLESPACE somespace;
+```
+
+#### Undo Tablespaces
+
+默认会有undo_001和undo_002两个文件
+
+#### Temporary Tablespaces
+
+临时表空间
+
+#### Doublewite Buffer Files 双写缓冲区
+
+将数据从Buffer Pool写入磁盘前，会先将数据页写入双写缓冲区，便于异常时恢复数据 .dblwr
+
+#### Redo Log
+
+重做日志，用于实现事务的持久性，重做日志缓冲 redo log buffer 以及重做日志文件 redo log，前者在内存中，后者在磁盘中。当事务提交后会把所有修改信息都保存在日志中，用于将Buffer Pool中脏页写入磁盘发生错误时恢复数据。会循环写入 ib_logfile0 和 ib_logfile1。
+
+### 后台线程
+
+#### Master Thread
+
+负责调度其他线程，负责将缓冲池中数据异步刷新到磁盘，保持数据一致性，包括脏页刷新，合并插入数据，undo页的回收
+
+#### IO Thread
+
+InnoDB大量使用AIO来处理IO请求，IO线程用于处理这些请求的回调
+
+| 线程                 | 默认数量 | 职责                   |
+| -------------------- | -------- | ---------------------- |
+| Read Thread          | 4        | 读操作                 |
+| Write Thread         | 4        | 写操作                 |
+| Log Thread           | 1        | 将日志缓冲区刷新到磁盘 |
+| Insert Buffer Thread | 1        | 将写缓冲区刷新到磁盘   |
+
+```sql
+SHOW ENGINE InnoDB STATUS;
+```
+
+#### Purge Thread
+
+回收事务提交的undo log
+
+#### Page Cleaner Thread
+
+协助主线程刷新脏页到磁盘的线程，减轻主线程的工作压力，减少阻塞
+
+## 事务原理
+
+一组不可分割的操作，遵循ACID原则
+
+原子性、一致性、持久性由 redo log 和 undo log 保证，隔离性由锁和 MVCC 保证
+
+### redo log
+
+记录事务提交时数据页的物理修改，用来实现事务的持久性。分为重做日志缓冲（redo log buffer）以及重做日志文件（redo log file），分属内存和磁盘。事务提交后会将修改的信息存放到日志中，用于刷新脏页到磁盘发生错误时恢复数据。
+
+![1678255849848](image/mysql进阶/1678255849848.png)
+
+### undo log
+
+回滚日志，用于记录数据被修改前的信息，用于回滚和MVCC
+
+undo log 和 redo log 不同，undo log是逻辑日志，记录与当前操作相反的操作，即一个insert语句会在undo log日志中记录delete语句。
+
+undo log销毁：在事务执行时产生，提交时不会立即删除，因为可用于MVCC
+
+undo log存储：采用段的方式进行管理和记录，存放在rollback segment中，占1024个段。
+
+## MVCC 多版本并发控制
+
+当前读：读取数据的最新版本，读取时会对记录加锁，保证其他事务不能修改，如 `select .. lock in share mode`， `select ... for update`，`update`，`insert`，`delete`。由于隔离级别一般为可重复读，如果另一个事务修改了数据并已提交，当前事务不会读取到更新后的数据
+
+快照读：读取数据的历史版本，不加锁的简单读都是快照读。Read Commited级别每一次读都生成快照读，Repeatable read级别第一次读会生成快照读，Serializable级别每次都是当前读
+
+MVCC：Multi-Version Concurrency Control，维护一个数据的多个版本，使得读写没有冲突。快照读为MySQL提供一个非阻塞读功能。MVCC具体实现依赖于数据库记录中三个隐藏字段、undo log日志和 readView
+
+### 隐藏字段
+
+在数据行中有三个隐藏字段 `DB_TRX_ID`（最近修改事务ID）， `DB_ROLL_PTR`（回滚指针，指向这条记录的上一个版本，配合undo log）， `DB_ROW_ID`（隐藏主键，如果表没有指定主键才会生成）。
+
+### undo log
+
+回滚日志，在插入，更新和删除时产生，用于数据回滚。当插入时，回滚日志只在回滚时需要，事务提交后删除。在更新和删除时，回滚日志不仅在回滚时需要，在快照读时也需要，不会被立即删除。
+
+![1678325732268](image/mysql进阶/1678325732268.png)
+
+### read view
+
+read view 是快照读执行时 MVCC 提取数据的依据，记录并维护系统当前活跃的事务id
+
+| 字段           | 含义                                 |
+| -------------- | ------------------------------------ |
+| m_ids          | 当前活跃事务ID集合                   |
+| min_trx_id     | 最小活跃事务ID                       |
+| max_trx_id     | 预分配事务ID，即当前活跃事务最大ID+1 |
+| creator_trx_id | 创建 ReadView 的事务ID               |
+
+版本数据链访问规则（当前事务id：trx_id）：
+
+* trx_id == creator_trx_id：可以访问该版本，说明数据是当前事务更改的
+* trx_id < min_trx_id：可以访问该版本，说明事务已提交
+* trx_id > max_trx_id：不可以访问该版本，说明事务是在Read View 生成后才开启
+* min_trx_id <= trx_id <= max_trx_id
+
+生成Read View时会根据版本数据链依次寻找符合条件的数据版本，作为查询的快照读。
+
+[参考](https://blog.csdn.net/filling_l/article/details/112854716)
+
+### RC级别的访问规则
+
+每一次快照读都会生成Read View
+
+### RR级别访问规则
+
+第一次读时生成Read View，后续读会使用同一个Read View
+
+# MySQL管理
+
+## MySQL自带表
+
+| 表                 | 用途                       |                                        |
+| ------------------ | -------------------------- | -------------------------------------- |
+| mysql              | 储存MySQL运行时需要的信息  | 用户名密码，时区，主从复制信息等       |
+| information_schema | 提供访问数据库元数据的视图 | 引擎信息，表空间，数据库权限，存储过程 |
+| performance_shema  | 监控数据库服务器运行状态   | 加锁情况，异常日志，事务信息等         |
+| sys                | 性能调优和诊断的视图       |                                        |
