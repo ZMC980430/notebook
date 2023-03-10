@@ -760,6 +760,10 @@ read view 是快照读执行时 MVCC 提取数据的依据，记录并维护系�
 
 第一次读时生成Read View，后续读会使用同一个Read View
 
+### 注意
+
+`select ... lock in share mode;` 是当前读，即结果可能和 `select ...;` 不同，即使是在同一事务中。
+
 # MySQL管理
 
 ## MySQL自带表
