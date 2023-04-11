@@ -1,6 +1,6 @@
 # MyForest 项目
 
-## 安装MySQL数据库
+## 安装MySQL数据库(win)
 
 终端中登录数据库 (password: 123456)
 
@@ -14,6 +14,91 @@ mysql -h localhost -u root -p
 net start MySQL80
 net stop MySQL80
 ```
+
+## 安装MySQL数据库(Linux)
+
+* 从官网下载安装包 tar.xz
+* 解压 tar -xvf ... 并移动到/opt/mysql/
+* 建立data文件夹
+* 创建mysql用户和用户组
+
+  ```shell
+  groupadd mysql
+  useradd -g mysql mysql
+  # 修改访问权限
+  chown -R mysql.mysql /opt/mysql/
+  ```
+* 数据库初始化，记录初始密码，可能在命令行中，可能在/data/mysql.err文件中
+
+  ```shell
+  ./bin/mysqld --user=mysql --basedir=/opt/mysql --datadir=/opt/mysql/data --initialize
+  ```
+* 修改my.cnf
+
+  ```properties
+  [mysqld]
+      basedir = /usr/local/mysql
+      datadir = /usr/local/mysql/data
+      socket = /usr/local/mysql/mysql.sock
+      character-set-server=utf8
+      port = 3306
+     sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES
+   [client]
+     socket = /usr/local/mysql/mysql.sock
+     default-character-set=utf8
+  ```
+* 创建mysql服务
+
+  ```shell
+  # 复制mysql服务并重命名为mysqld 
+  cp -a /usr/local/mysql/support-files/mysql.server /etc/init.d/mysqld
+  chmod +x /etc/init.d/mysqld
+  chkconfig --add mysqld
+  # chkconfig 可能没有，可以安装sysv-rc-conf
+  # 找不到包可以在/etc/apt/sources.list 后面添加
+  # deb http://archive.ubuntu.com/ubuntu/ trusty main universe restricted multiverse
+
+  # 查看mysql服务是否添加上
+  chkconfig --list mysql
+  # 或者
+  sysv-rc-conf --list mysql
+
+  ```
+* 配置环境变量，编辑/etc/profile，添加以下
+
+  ```properties
+  export PATH=$PATH:/usr/local/mysql/bin:/usr/local/mysql/lib
+  export PATH
+  ```
+* 启动mysql服务：service mysql start
+* 在本地访问可能没有安装客户端，可直接使用 apt install mysql-client-core-8.0
+* 修改登录密码，使用初始密码登陆，再修改密码
+
+  ```sql
+  ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456';
+  ```
+* 设置远程登录
+
+  ```sql
+  use mysql;
+  update user set host='%' where user='root' limit 1;
+  flush privileges;
+  ```
+* 测试端口能否使用
+
+  ```shell
+  telnet [ip] [port]
+  ```
+* 关闭防火墙
+
+  ```shell
+  # 查看端口
+  firewall-cmd --list-ports
+  # 设置端口可在外部访问
+  firewall-cmd --zone=public --add-port=3306/tcp --permanent
+  ```
+
+[参考](https://www.cnblogs.com/MrYoodb/p/15811199.html)
 
 ## springboot demo项目
 
