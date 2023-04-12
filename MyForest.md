@@ -100,6 +100,16 @@ net stop MySQL80
 
 [参考](https://www.cnblogs.com/MrYoodb/p/15811199.html)
 
+## 生成ssh密钥
+
+在客户端生成密钥
+```shell
+# 指定算法
+ssh-keygen [-t dsa]
+```
+上传密钥到服务器端 ~/.authorized_keys
+或使用 ssh-copy-id -i id_rsa user@host 直接上传
+
 ## springboot demo项目
 
 创建Maven项目，修改pom.xml，添加依赖
