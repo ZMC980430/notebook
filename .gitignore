@@ -115,3 +115,5 @@ imgs/*
 
 # dataset
 dataset/
+
+.DS_Store
