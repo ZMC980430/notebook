@@ -183,3 +183,18 @@ ssh -L portB:ipC:portC user@ipB
 
 # 
 ```
+
+## 跨域
+
+协议，ip，端口号与前端页面本身不一致，会限制访问
+
+解决方法：
+
+在Controller类前添加注释 @CrossOrigin
+
+# 一些Linux命令
+
+| 功能     | 命令 | 备注 |
+| -------- | ---- | ---- |
+| 查看架构 | arch |      |
+|          |      |      |

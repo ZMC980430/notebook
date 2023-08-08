@@ -430,7 +430,7 @@ common公共父模块
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
         </dependency>
-    
+  
         <dependency>
             <groupId>com.atguigu</groupId>
             <artifactId>model</artifactId>
@@ -528,7 +528,7 @@ common公共父模块
             <artifactId>mybatis-plus-boot-starter</artifactId>
             <scope>provided </scope>
         </dependency>
-    
+  
         <dependency>
             <groupId>com.github.xiaoymin</groupId>
             <artifactId>knife4j-spring-boot-starter</artifactId>
@@ -1601,7 +1601,7 @@ public interface RoleService extends IService<Role> {
 **RoleServiceImpl实现类**
 
 ```java
-package com.atguigu.ssyx.acl.service.impl;
+Rpackage com.atguigu.ssyx.acl.service.impl;
 
 import com.atguigu.ssyx.acl.mapper.RoleMapper;
 import com.atguigu.ssyx.acl.service.RoleService;
@@ -2734,11 +2734,11 @@ http {
         listen       9001;
         server_name  localhost;
 
-        location ~ /acl/ {       
+        location ~ /acl/ {     
             proxy_pass http://localhost:8201;
         }  
 
-        location ~ /sys/ {       
+        location ~ /sys/ {     
             proxy_pass http://localhost:8202;
         }
     }
@@ -5863,22 +5863,22 @@ public class CouponInfoServiceImpl extends ServiceImpl<CouponInfoMapper, CouponI
     public Map<String, Object> findCouponRuleList(Long couponId) {
         Map<String, Object> result = new HashMap<>();
         CouponInfo couponInfo = this.getById(couponId);
-    
+  
         QueryWrapper couponRangeQueryWrapper = new QueryWrapper<CouponRange>();
         couponRangeQueryWrapper.eq("coupon_id",couponId);
         List<CouponRange> activitySkuList = couponRangeMapper.selectList(couponRangeQueryWrapper);
-    
+  
         List<Long> rangeIdList = activitySkuList.stream().map(CouponRange::getRangeId).collect(Collectors.toList());
-    
+  
         if(!CollectionUtils.isEmpty(rangeIdList)) {
             if(couponInfo.getRangeType() == CouponRangeType.SKU) {
                 List<SkuInfo> skuInfoList = productFeignClient.findSkuInfoList(rangeIdList);
                 result.put("skuInfoList", skuInfoList);
-            
+          
             } else if (couponInfo.getRangeType() == CouponRangeType.CATEGORY) {
                 List<Category> categoryList = productFeignClient.findCategoryList(rangeIdList);
                 result.put("categoryList", categoryList);
-            
+          
             } else {
                 //通用
             }
@@ -9131,7 +9131,7 @@ public class ItemServiceImpl implements ItemService {
         }, threadPoolExecutor);
 
         //TODO 如果商品是秒杀商品，获取秒杀信息
-    
+  
         CompletableFuture<Void> activityCompletableFuture = CompletableFuture.runAsync(() -> {
             //sku对应的促销与优惠券信息
             Map<String, Object> activityAndCouponMap = activityFeignClient.findActivityAndCoupon(skuId, userId);
