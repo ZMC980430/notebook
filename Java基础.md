@@ -63,3 +63,17 @@ Integer i1 = 40;
 Integer i2 = new Integer(40);
 System.out.println(i1==i2);// 输出  False
 ```
+
+# ArrayList
+
+扩容时首先判断需要的最小容量miniCapacity是否小于 DEFAULT_CAPACITY，即小于10，如果小于就扩容到10。超过时 newCapacity = oldCapacity+oldCapacity>>1，若仍小于miniCapacity，则扩容至miniCapacity。通过Array.copyOf(elementData, newCapacity) 来生成新数组，并扩容和复制。
+
+# LinkedList
+
+LinkedList使用双向链表实现，实现了Queue接口，但一般使用ArrayDeque来实现队列。没有哑元，链表为空头尾指针都是null。节点存储的内容可以为null
+
+# DeQue
+
+下标越界的处理方式：head=(head-1)&(elements.length-1)，这是因为elements的长度永远是2的次方，故elements.length-1低位都是1，head大于零相当于取模，小于零相当于取补。
+
+扩容时分两步，先复制head右边的元素至新数组头部，再接着复制head左边的元素，使得新数组中head指向数组第一个元素，tail指向最后一个。tail总是指向为空的位置。
