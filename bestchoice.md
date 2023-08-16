@@ -1601,7 +1601,7 @@ public interface RoleService extends IService<Role> {
 **RoleServiceImpl实现类**
 
 ```java
-package com.atguigu.ssyx.acl.service.impl;
+Rpackage com.atguigu.ssyx.acl.service.impl;
 
 import com.atguigu.ssyx.acl.mapper.RoleMapper;
 import com.atguigu.ssyx.acl.service.RoleService;
@@ -5874,11 +5874,11 @@ public class CouponInfoServiceImpl extends ServiceImpl<CouponInfoMapper, CouponI
             if(couponInfo.getRangeType() == CouponRangeType.SKU) {
                 List<SkuInfo> skuInfoList = productFeignClient.findSkuInfoList(rangeIdList);
                 result.put("skuInfoList", skuInfoList);
-        
+          
             } else if (couponInfo.getRangeType() == CouponRangeType.CATEGORY) {
                 List<Category> categoryList = productFeignClient.findCategoryList(rangeIdList);
                 result.put("categoryList", categoryList);
-        
+          
             } else {
                 //通用
             }

@@ -227,3 +227,17 @@ Secret: EKS74f2LMFa1SikVI5kgQKt8fqZYEh
 | wc -l  | 计数 PV分析     | -c bytes，-m chars，-l lines，-w words                                                                                                                                                       |
 | awk    | 模式分析 PV分组 | 默认将每行按空格分组，相当于split：<br />awk '{print $4}' access.log 在nginx中可筛选访问信息<br />如果只需要部分字符串，还可使用substr函数：<br />awk '{print substr($4, 2, 11)}' access.log |
 |        |                 |                                                                                                                                                                                              |
+## 跨域
+
+协议，ip，端口号与前端页面本身不一致，会限制访问
+
+解决方法：
+
+在Controller类前添加注释 @CrossOrigin
+
+# 一些Linux命令
+
+| 功能     | 命令 | 备注 |
+| -------- | ---- | ---- |
+| 查看架构 | arch |      |
+|          |      |      |
