@@ -183,3 +183,47 @@ ssh -L portB:ipC:portC user@ipB
 
 # 
 ```
+
+## Nginx 实现反向代理
+
+```
+server {
+    listen        port;
+    server_name   ip;
+  
+    location ~ /acl {
+        proxy_pass http://localhost:port;
+    }
+
+    location ~ /sys {
+        proxy_pass http://localhost:port;
+    }
+}
+```
+
+## Linux 配置运行java
+
+```powershell
+mkdir -p /usr/local/java/
+tar -zxvf jdk-8u241-linux-x64.tar.gz -C /usr/local/java/
+
+mkdir /root/mvn
+
+```
+
+## OSS key
+
+ID: LTAI5tLEni8Ao29wpPqmVwpz
+Secret: EKS74f2LMFa1SikVI5kgQKt8fqZYEh
+
+## Linux log analysis
+
+| 命令   | 用途            | 备注                                                                                                                                                                                         |
+| ------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ls -lh | 查看文件大小    |                                                                                                                                                                                              |
+| cat    | 查看文件内容    | 会读取全部内容，大文件不合适                                                                                                                                                                 |
+| less   | 输出一小页内容  | 按需加载                                                                                                                                                                                     |
+| tail   | 输出日志末尾    | 查看日志最新部分，less -n 5 查看末尾五行                                                                                                                                                     |
+| wc -l  | 计数 PV分析     | -c bytes，-m chars，-l lines，-w words                                                                                                                                                       |
+| awk    | 模式分析 PV分组 | 默认将每行按空格分组，相当于split：<br />awk '{print $4}' access.log 在nginx中可筛选访问信息<br />如果只需要部分字符串，还可使用substr函数：<br />awk '{print substr($4, 2, 11)}' access.log |
+|        |                 |                                                                                                                                                                                              |
