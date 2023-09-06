@@ -3497,7 +3497,7 @@ public void saveSkuInfo(SkuInfoVo skuInfoVo) {
 
 开通“对象存储OSS”服务
 
-进入管理控制台 
+进入管理控制台
 
 ![image-20221117113207563](images\153.png)
 
@@ -5874,11 +5874,11 @@ public class CouponInfoServiceImpl extends ServiceImpl<CouponInfoMapper, CouponI
             if(couponInfo.getRangeType() == CouponRangeType.SKU) {
                 List<SkuInfo> skuInfoList = productFeignClient.findSkuInfoList(rangeIdList);
                 result.put("skuInfoList", skuInfoList);
-          
+        
             } else if (couponInfo.getRangeType() == CouponRangeType.CATEGORY) {
                 List<Category> categoryList = productFeignClient.findCategoryList(rangeIdList);
                 result.put("categoryList", categoryList);
-          
+        
             } else {
                 //通用
             }
@@ -7315,28 +7315,7 @@ wx:
 ```java
 package com.atguigu.ssyx.user.utils;
 
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
-@Component
-public class ConstantPropertiesUtil implements InitializingBean {
-
-    @Value("${wx.open.app_id}")
-    private String appId;
-
-    @Value("${wx.open.app_secret}")
-    private String appSecret;
-
-    public static String WX_OPEN_APP_ID;
-    public static String WX_OPEN_APP_SECRET;
-
-    @Override
-    public void afterPropertiesSet() throws Exception {
-        WX_OPEN_APP_ID = appId;
-        WX_OPEN_APP_SECRET = appSecret;
-    }
-}
+ 
 ```
 
 **（2）添加HttpClient工具类**
