@@ -734,19 +734,19 @@ MVCC：Multi-Version Concurrency Control，维护一个数据的多个版本，�
 
 read view 是快照读执行时 MVCC 提取数据的依据，记录并维护系统当前活跃的事务id
 
-| 字段           | 含义                                 |
-| -------------- | ------------------------------------ |
-| m_ids          | 当前活跃事务ID集合                   |
-| min_trx_id     | 最小活跃事务ID                       |
-| max_trx_id     | 预分配事务ID，即当前活跃事务最大ID+1 |
-| creator_trx_id | 创建 ReadView 的事务ID               |
+| 字段           | 含义                                       |
+| -------------- | ------------------------------------------ |
+| m_ids          | 当前活跃事务ID集合                         |
+| min_trx_id     | 最小活跃事务ID                             |
+| max_trx_id     | 预分配事务ID，即创建view时活跃事务最大ID+1 |
+| creator_trx_id | 创建 ReadView 的事务ID                     |
 
 版本数据链访问规则（当前事务id：trx_id）：
 
 * trx_id == creator_trx_id：可以访问该版本，说明数据是当前事务更改的
-* trx_id < min_trx_id：可以访问该版本，说明事务已提交
+* trx_id < min_trx_id：可以访问该版本，说明数据在本事务创建前已提交
 * trx_id > max_trx_id：不可以访问该版本，说明事务是在Read View 生成后才开启
-* min_trx_id <= trx_id <= max_trx_id
+* min_trx_id <= trx_id <= max_trx_id，且trx_id不是活跃事务，说明在创建view前事务已提交，可查看
 
 生成Read View时会根据版本数据链依次寻找符合条件的数据版本，作为查询的快照读。
 
