@@ -180,9 +180,13 @@ xpending streamkey groupkey
 - 7之前保存频率为 save seconds changes 表示多少秒内发生多少次修改就保存
 - 7之后可以设置多对 secondes changes，满足一个就保存
 - 手动保存：save 和 bgsave，save会阻塞服务器，bgsave不会阻塞，原理是fork()一个子进程
-- 优点：单文件单时间节点备份，恢复速度快，适合大规模数据恢复
+- 优点：单文件单时间节点备份，恢复速度快，适合大规模数据恢复，使用LZF压缩，文件占用远小于内存占用
 - 缺点：IO大，Redis意外停止会丢失部分数据，fork会导致内存用量翻倍
 - 破损rdb文件修复：redis-check-rdb
+
+主从复制，执行debug reload 重新加载redis，以及默认情况没开启AOF时都会触发bgsave
+
+bgsave 本身不会阻塞主线程，但在创建子进程的过程中会阻塞，且占用内存越大阻塞时间越长。
 
 ### AOF（Append Only File）
 
@@ -295,11 +299,9 @@ ps：负载因子 = 哈希表已保存节点数量 / 哈希表大小。
 
 ![1694597468417](image/Redis/1694597468417.png)
 
-1.  `encoding` 表示编码方式，的取值有三个：INTSET_ENC_INT16, INTSET_ENC_INT32, INTSET_ENC_INT64
-
-2.  `length` 代表其中存储的整数的个数
-
-3.  `contents` 指向实际存储数值的连续内存区域, 就是一个数组；整数集合的每个元素都是 contents 数组的一个数组项（item），各个项在数组中按值得大小 **从小到大有序排序** ，且数组中不包含任何重复项。（虽然 intset 结构将 contents 属性声明为 int8_t 类型的数组，但实际上 contents 数组并不保存任何 int8_t 类型的值，contents 数组的真正类型取决于 encoding 属性的值）
+1. `encoding` 表示编码方式，的取值有三个：INTSET_ENC_INT16, INTSET_ENC_INT32, INTSET_ENC_INT64
+2. `length` 代表其中存储的整数的个数
+3. `contents` 指向实际存储数值的连续内存区域, 就是一个数组；整数集合的每个元素都是 contents 数组的一个数组项（item），各个项在数组中按值得大小 **从小到大有序排序** ，且数组中不包含任何重复项。（虽然 intset 结构将 contents 属性声明为 int8_t 类型的数组，但实际上 contents 数组并不保存任何 int8_t 类型的值，contents 数组的真正类型取决于 encoding 属性的值）
 
 当向一个 int16_t 类型的数组插入 int32_t 类型的元素时，会导致数组升级：
 
@@ -333,10 +335,98 @@ ps：负载因子 = 哈希表已保存节点数量 / 哈希表大小。
 
 ![1694609395669](image/Redis/1694609395669.png)
 
-### List 
+### List
 
 List 使用 QuickList 实现，ptr 指向QuickList 头
 
 ### Hash
 
-哈希对象底层为 ziplist 或 hashtable
+哈希对象底层为 ziplist 或 hashtable，当底层为 hashtable 时，ht数组可能指向两个 dictht 实例。使用ziplist时，新元素总是添加到队尾。
+
+当元素个数小于512个，且每个元素长度小于64字节时，使用 ziplist，这两个限值可以在配置文件中修改
+
+![1694660133869](image/Redis/1694660133869.png)
+
+### Set
+
+集合的编码可以是 intset 和 hashtable，使用 intset 时元素只能为整数
+
+当元素个数不超过512且都是整数时使用 intset，其他时候使用 hashtable，且值字段闲置不用
+
+### ZSet
+
+有序集合的底层一种为 ziplist，一种为 dict 和 skiplist的结合
+
+![1694667611190](image/Redis/1694667611190.png)
+
+## 发布订阅模式
+
+Redis 的发布订阅模式可以让客户端订阅任意数量的频道
+
+![1694670977416](image/Redis/1694670977416.png)
+
+发布
+
+```
+> publish channel message
+```
+
+订阅
+
+```
+> subscribe channels
+Reading messages... (press Ctrl-C to quit)
+```
+
+订阅频道不会收到订阅前的消息
+
+在订阅状态下，客户端只能使用 `subscribe`, `unsubscribe`, `psubscribe` 和 `punsubscribe` 命令。
+
+### 基于模式的发布订阅 psubscribe
+
+可以使用模式匹配来堆多个频道发布消息，如 `tweet.shop.*` 匹配 `tweet.shop.kindle` 和 `tweet.shop.ipad`，且 `tweet.shop.*`也可作为一个频道被订阅，会同时收到单独发给另两个频道的消息。?匹配任意一个字符，\*匹配任意个字符 ，?\*匹配任意一个以上的字符
+
+![1694671589875](image/Redis/1694671589875.png)
+
+![1694671679843](image/Redis/1694671679843.png)
+
+### 订阅底层实现
+
+订阅机制底层是通过字典实现的，键为channel名，值为链表，包含订阅这个频道的客户端
+
+![1694675719761](image/Redis/1694675719761.png)
+
+基于模式的订阅机制维护一个节点为 pubsubPattern 的链表，包含客户端名和模式信息 client, pattern。当调用 psubscribe 时，会创建一个 pubsubPattern 节点添加到链表中。
+
+## Redis 事件
+
+事件驱动库只关注网络IO以及定时器，主要处理 Redis 服务器和客户端之间的网络 IO，以及些定时操作。
+
+- file event：处理网络IO
+- time event：如 serverCron 函数，需要在给定时间点执行。
+
+![1694751748878](image/Redis/1694751748878.png)
+
+#### 文件事件
+
+##### 网络事件处理
+
+基于 Reactor 模型，文件事件处理器采用 IO 多路复用技术，同时监听多个套接字，并为其关联不同的事件处理函数。当套接字可读或可写事件触发时，会调用相应处理函数。
+
+##### 事件响应框架 ae_event 及文件事件处理器
+
+Redis 使用的IO多路复用技术主要有 select，epoll，evport 和 kqueue。会根据不同操作系统以及不同优先级选择不同的多路复用技术。事件响应框架一般都采用该架构，如 netty 和 libevent。
+
+文件事件是对套接字操作的抽象，当一个套接字准备 `accept, read, write, close` 时，会产生文件事件。Redis 通常会连接多个套接字，所以会出现并发出现多个文件事件。IO 多路复用程序会监听多个套接字，并向文件事件派发器传递产生事件的套接字。IO 多路复用程序会将产生的套接字放在同一个队列中（fired）。然后文件事件处理器会以同步方式单个处理队列中的套接字。
+
+![1694754933000](https://file+.vscode-resource.vscode-cdn.net/d%3A/Documents/javaspace/notebook/image/Redis/1694754933000.png)一次客户端与服务器连接且发送命令的过程：
+
+* 客户端向服务器发起**建立 socket 连接的请求**，监听套接字会产生 `AE_READABLE` 事件，触发连接应答处理器执行。处理器会**应答**客户端的请求，然后创建客户端套接字，以及客户端状态，将客户端套接字的 `AE_READABLE` 世家与命令请求处理器关联。
+* 连接后，客户端向服务器**发送命令**，服务器中客户端套接字会产生 `AE_READABLE` 事件，触发命令请求处理器执行，处理器读取客户端命令，然后传递给相关程序去执行。
+* 服务器将客户端套接字的 `AE_WRITEABLE` 事件与命令回复器相关联。当客户端试图读取命令回复时，客户端产生 `AE_WRITEABLE` 事件，触发命令回复处理器将命令回复写入套接字中。
+
+##### Redis IO 多路复用
+
+Redis 的多路复用机制允许内核中同时存在多个监听套接字和已连接套接字。内核会一直监听连接请求或数据请求。
+
+![1694760257273](image/Redis/1694760257273.png)
