@@ -308,15 +308,13 @@ SELECT u.* FROM user, (SELECT id FROM user ORDER BY id LIMIT 10000, 10) a WHERE 
 
 MyISAM 引擎记录了表的总行数，但InnoDB没有，在执行COUNT时需要读取数据，无法直接优化
 
-COUNT(*) 计数记录数
+* COUNT(*) 计数记录数
+* COUNT(column) 计数字段中非空值
+* COUNT(1) 计数记录数
+* COUNT 计数的字段没有NOT NULL约束时会判断是否为空，会影响速度，若有NOT NULL约束，只会取值不会判断
+* COUNT(*) 不会取值，引擎有优化，直接返回总计数，效率最高
 
-COUNT(column) 计数字段中非空值
-
-COUNT(1) 计数记录数
-
-COUNT 计数的字段没有NOT NULL约束时会判断是否为空，会影响速度，若有NOT NULL约束，只会取值不会判断
-
-COUNT(*) 不会取值，引擎有优化，直接返回总计数，效率最高
+COUNT(*) 会使用索引来计数，没有索引会全表扫描，有主键索引会使用主键索引，由其他索引会使用其他索引。同样，COUNT(column) 能使用索引也会使用索引。
 
 ### update优化
 
