@@ -739,3 +739,5 @@ pong 超时则标记为 pfail，用 gossip 传播pfail，检测 pfail，并维�
 每个心跳包中包含多个 gossip 包，Redis 选择每个心跳包包含 N/10 个 gossip 包，保证在 pfail 过期时间内能接收到80%的节点的gossip投票，保证能顺利判断 fail。
 
 ### 故障恢复 failover
+
+当从节点发现主节点 fail 后，便尝试 failover 成为新的 master。Failover 的过程要通过 Raft 算法在集群内达到一致。
