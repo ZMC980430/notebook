@@ -887,3 +887,5 @@ redis-cli -h {ip} -p {port} --bigkeys -i {sec}
 ```
 
 查询 key 占用字节数：memory usage key
+
+当从节点发现主节点 fail 后，便尝试 failover 成为新的 master。Failover 的过程要通过 Raft 算法在集群内达到一致。
